@@ -1,7 +1,14 @@
 # Pizza Orders
 Problem Statement:
 
-Welcome to the SQL Portfolio Project focused on a fictional pizza orders. In this project, you'll be diving into a dataset comprising four tables: order_details, orders, pizzas, and pizza_types. Your mission is to leverage your SQL skills to extract valuable insights from this data and showcase your analytical prowess.
+The Pizza Ordering System Analysis project aims to provide valuable insights to a fictional pizza company regarding their ordering process and customer preferences. Through a series of SQL queries and analysis, we aim to help the company understand their operations better and identify areas for improvement.
+
+The project addresses the following key objectives:
+
+1. Understanding Customer Behavior: Analyze the ordering patterns and preferences of customers to identify trends and popular choices.
+2. Performance Evaluation: Evaluate the company's performance metrics such as total orders placed, revenue generated, highest-priced pizza, and common pizza sizes ordered.
+3. Improvement Opportunities: Identify areas for improvement based on customer satisfaction ratings, average order delay, and distribution of orders by hour of the day.
+4. Strategic Decision Making: Provide actionable insights to assist the company in making strategic decisions to enhance customer satisfaction and operational efficiency.
 
 Dataset Description:
 

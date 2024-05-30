@@ -1,0 +1,176 @@
+### Layoffs Data Cleaning and Exploratory Data Analysis
+
+#### Project Overview
+This project involves cleaning and analyzing a dataset containing information about layoffs across various companies, industries, and locations. The goal is to transform raw data into a clean and standardized format, remove duplicates, handle missing values, and extract meaningful insights through exploratory data analysis (EDA). This project showcases my SQL skills, attention to detail, and ability to derive actionable insights from data, making it a valuable addition to my data analysis portfolio.
+
+#### Data Cleaning Steps
+
+1. **Remove Duplicates:**
+   - Created a staging table (`layoffs_staging`) identical to the original `layoffs` table.
+   - Inserted data from the original table into the staging table.
+   - Identified and removed duplicate rows using the `ROW_NUMBER()` window function and CTE.
+   ```sql
+    CREATE TABLE world_layoffs.layoffs_staging LIKE world_layoffs.layoffs;
+
+   INSERT INTO world_layoffs.layoffs_staging 
+   SELECT * FROM world_layoffs.layoffs;
+
+   WITH DELETE_CTE AS (
+     SELECT company, location, industry, total_laid_off, percentage_laid_off, `date`, stage, country, funds_raised_millions, 
+     ROW_NUMBER() OVER (PARTITION BY company, location, industry, total_laid_off, percentage_laid_off, `date`, stage, country, funds_raised_millions) AS row_num
+     FROM world_layoffs.layoffs_staging
+   )
+   DELETE FROM world_layoffs.layoffs_staging
+   WHERE (company, location, industry, total_laid_off, percentage_laid_off, `date`, stage, country, funds_raised_millions, row_num) IN (
+     SELECT company, location, industry, total_laid_off, percentage_laid_off, `date`, stage, country, funds_raised_millions, row_num
+     FROM DELETE_CTE
+   ) AND row_num > 1;
+   ```
+
+2. **Standardize the Data:**
+   - Trimmed whitespace from `company` and `industry` columns.
+   - Standardized industry names (e.g., consolidating variations of "crypto").
+   - Removed trailing periods from `country` values.
+   - Converted `date` from string to date format using `STR_TO_DATE()` and `ALTER TABLE`.
+   ```sql
+   UPDATE world_layoffs.layoffs_staging2
+   SET industry = NULL
+   WHERE industry = '';
+
+   UPDATE layoffs_staging2 t1
+   JOIN layoffs_staging2 t2
+   ON t1.company = t2.company
+   SET t1.industry = t2.industry
+   WHERE t1.industry IS NULL
+   AND t2.industry IS NOT NULL;
+
+   UPDATE layoffs_staging2
+   SET industry = 'Crypto'
+   WHERE industry IN ('Crypto Currency', 'CryptoCurrency');
+
+   UPDATE layoffs_staging2
+   SET country = TRIM(TRAILING '.' FROM country);
+
+   UPDATE layoffs_staging2
+   SET `date` = STR_TO_DATE(`date`, '%m/%d/%Y');
+
+   ALTER TABLE layoffs_staging2
+   MODIFY COLUMN `date` DATE;
+   ```
+
+3. **Handle Null Values:**
+   - Identified and updated null or empty values in the `industry` column by leveraging information from other rows.
+   - Removed rows where both `total_laid_off` and `percentage_laid_off` were null.
+   ```sql
+   DELETE FROM world_layoffs.layoffs_staging2
+   WHERE total_laid_off IS NULL
+   AND percentage_laid_off IS NULL;
+   ```
+
+4. **Remove Unnecessary Columns:**
+   - Dropped the `row_num` column after removing duplicates.
+   ```sql
+   ALTER TABLE layoffs_staging2
+   DROP COLUMN row_num;
+   ```
+
+#### Exploratory Data Analysis (EDA)
+
+1. **General Statistics:**
+   - Identified the maximum and minimum values for `total_laid_off` and `percentage_laid_off`.
+   - Analyzed the companies with the highest total layoffs and those with 100% layoffs, often indicating company shutdowns.
+   ```sql
+   SELECT MAX(total_laid_off) FROM world_layoffs.layoffs_staging2;
+
+   SELECT MAX(percentage_laid_off), MIN(percentage_laid_off)
+   FROM world_layoffs.layoffs_staging2
+   WHERE  percentage_laid_off IS NOT NULL;
+
+   SELECT *
+   FROM world_layoffs.layoffs_staging2
+   WHERE  percentage_laid_off = 1;
+
+   SELECT *
+   FROM world_layoffs.layoffs_staging2
+   WHERE  percentage_laid_off = 1
+   ORDER BY funds_raised_millions DESC;
+   ```
+
+2. **Company Analysis:**
+   - Listed companies with the largest single layoffs.
+   - Summarized total layoffs by company, identifying those most affected.
+   ```sql
+   SELECT company, total_laid_off
+   FROM world_layoffs.layoffs_staging
+   ORDER BY 2 DESC
+   LIMIT 5;
+
+   SELECT company, SUM(total_laid_off)
+   FROM world_layoffs.layoffs_staging2
+   GROUP BY company
+   ORDER BY 2 DESC
+   LIMIT 10;
+   ```
+
+3. **Location Analysis:**
+   - Summarized total layoffs by location and country, highlighting regions most impacted.
+   ```sql
+   SELECT location, SUM(total_laid_off)
+   FROM world_layoffs.layoffs_staging2
+   GROUP BY location
+   ORDER BY 2 DESC
+   LIMIT 10;
+
+   SELECT country, SUM(total_laid_off)
+   FROM world_layoffs.layoffs_staging2
+   GROUP BY country
+   ORDER BY 2 DESC;
+   ```
+
+4. **Temporal Analysis:**
+   - Analyzed layoffs over time, grouping by year and month to identify trends.
+   - Created a rolling total of layoffs per month to visualize trends over time.
+   ```sql
+   SELECT YEAR(date), SUM(total_laid_off)
+   FROM world_layoffs.layoffs_staging2
+   GROUP BY YEAR(date)
+   ORDER BY 1 ASC;
+
+   WITH DATE_CTE AS 
+   (
+   SELECT SUBSTRING(date,1,7) as dates, SUM(total_laid_off) AS total_laid_off
+   FROM layoffs_staging2
+   GROUP BY dates
+   ORDER BY dates ASC
+   )
+   SELECT dates, SUM(total_laid_off) OVER (ORDER BY dates ASC) as rolling_total_layoffs
+   FROM DATE_CTE
+   ORDER BY dates ASC;
+   ```
+
+5. **Industry and Stage Analysis:**
+   - Summarized total layoffs by industry to identify the hardest-hit sectors.
+   - Analyzed layoffs by the company's stage to understand if startups or established firms were more affected.
+   ```sql
+   SELECT industry, SUM(total_laid_off)
+   FROM world_layoffs.layoffs_staging2
+   GROUP BY industry
+   ORDER BY 2 DESC;
+
+   SELECT stage, SUM(total_laid_off)
+   FROM world_layoffs.layoffs_staging2
+   GROUP BY stage
+   ORDER BY 2 DESC;
+   ```
+
+#### Key Insights
+
+- Companies with 100% layoffs were typically startups that went out of business.
+- BritishVolt, an EV company, raised significant funds but still faced massive layoffs.
+- Layoffs were highest in certain industries, with notable peaks at specific times, reflecting broader economic trends.
+
+#### Conclusion
+
+This project demonstrates my proficiency in SQL for data cleaning, handling duplicates, standardizing data, and performing comprehensive exploratory data analysis. The insights derived can aid in understanding the economic impact on various industries and companies, making this analysis relevant for strategic business decisions.
+
+---
